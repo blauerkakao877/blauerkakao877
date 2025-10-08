@@ -1,0 +1,407 @@
+html
+
+<!DOCTYPE html>
+<html lang="en">
+<body>
+<h1 class="wave-text">
+  <span>M</span><span>e</span><span>i</span><span>n</span><span>e</span>
+  <span> </span>
+  <span>T</span><span>o</span><span>d</span><span>o</span><span>s</span>
+</h1>
+  <div id="buttonContainer">
+    <input type="text" id="todoinput" placeholder="Was möchtest du tun?">
+    <button id="addBtn">Hinzufügen</button>
+    <button id="completeAll">Alles erledigt</button>
+    <button id="removeDone">Erledigte löschen</button>
+  </div>
+
+  <ul id="myTodos"></ul>
+  <canvas id="canvas"></canvas>
+
+  <script src="script.js"></script>
+</body>
+</html>
+
+
+===================================================js===========================================
+
+const input = document.getElementById("todoinput");
+const addBtn = document.getElementById("addBtn");
+const completeAll = document.getElementById("completeAll");
+const removeDone = document.getElementById("removeDone");
+const list = document.getElementById("myTodos");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+addBtn.addEventListener("click", () => {
+  addBtn.classList.add("pulse");
+  setTimeout(() => addBtn.classList.remove("pulse"), 300);
+});
+
+// 📋 Neue Aufgabe erstellen
+function createTask(text) {
+  const task = document.createElement("li");
+
+  // Linker Bereich: Text + Counter
+  const left = document.createElement("div");
+  left.classList.add("leftContainer");
+
+  const span = document.createElement("span");
+  span.textContent = text;
+  span.classList.add("taskText");
+  left.appendChild(span);
+
+  const counter = document.createElement("span");
+  counter.classList.add("counter");
+  counter.textContent = "";
+  left.appendChild(counter);
+
+  task.appendChild(left);
+
+  // Rechter Bereich: Checkbox + Buttons
+  const right = document.createElement("div");
+  right.classList.add("rightContainer");
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked) {
+      task.classList.add("done");
+      startConfetti();
+    } else {
+      task.classList.remove("done");
+    }
+  });
+  right.appendChild(checkbox);
+
+  const removeBtn = document.createElement("button");
+  removeBtn.textContent = "X";
+  removeBtn.classList.add("removeBtn");
+  removeBtn.addEventListener("click", () => {
+    let count = parseInt(task.dataset.count, 10);
+    if (count > 1) {
+      updateTaskCount(task, count - 1);
+    } else {
+      task.remove();
+    }
+  });
+  right.appendChild(removeBtn);
+
+  const editBtn = document.createElement("button");
+  editBtn.textContent = "Bearbeiten";
+  editBtn.classList.add("editBtn");
+  editBtn.addEventListener("click", () => {
+    const newText = prompt("Ändere dein Todo:", span.textContent);
+    if (newText && newText.trim() !== "") {
+      span.textContent = newText.trim();
+      task.dataset.text = newText.trim();
+    }
+  });
+  right.appendChild(editBtn);
+
+  task.appendChild(right);
+
+  // Dataset speichern
+  task.dataset.text = text;
+  task.dataset.count = 1;
+
+  return task;
+}
+
+// 🔢 Counter aktualisieren
+function updateTaskCount(task, newCount) {
+  task.dataset.count = newCount;
+  const counter = task.querySelector(".counter");
+  counter.textContent = newCount > 1 ? `(${newCount}x)` : "";
+}
+
+// ➕ Neues Todo hinzufügen
+function addTodo() {
+  const text = input.value.trim();
+  if (!text) return;
+
+  const existing = Array.from(list.children).find(li => li.dataset.text === text);
+
+  if (existing) {
+    let count = parseInt(existing.dataset.count, 10);
+    updateTaskCount(existing, count + 1);
+  } else {
+    const task = createTask(text);
+    list.appendChild(task);
+  }
+
+  input.value = "";
+}
+
+// 🟢 Alle erledigen
+completeAll.addEventListener("click", () => {
+  const items = list.querySelectorAll("li");
+  items.forEach(item => {
+    item.classList.add("done");
+    const checkbox = item.querySelector("input[type='checkbox']");
+    if (checkbox) checkbox.checked = true;
+  });
+  startConfetti();
+});
+
+// 🔴 Erledigte löschen
+removeDone.addEventListener("click", () => {
+  const doneItems = list.querySelectorAll(".done");
+  doneItems.forEach(item => item.remove());
+});
+
+// 📥 Add-Todo Events
+addBtn.addEventListener("click", addTodo);
+input.addEventListener("keydown", e => {
+  if (e.key === "Enter") addTodo();
+});
+
+// 🎉 Konfetti-Animation
+let confetti = [];
+
+function startConfetti() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  confetti = Array.from({ length: 500 }, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * -50,
+    size: Math.random() * 8 + 4,
+    color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+    speed: Math.random() * 4 + 2,
+    rotation: Math.random() * 360
+  }));
+
+  requestAnimationFrame(drawConfetti);
+}
+
+function drawConfetti() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  confetti.forEach(c => {
+    ctx.fillStyle = c.color;
+    ctx.save();
+    ctx.translate(c.x + c.size / 2, c.y + c.size / 2);
+    ctx.rotate((c.rotation * Math.PI) / 180);
+    ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size);
+    ctx.restore();
+    c.y += c.speed;
+    c.rotation += 5;
+  });
+
+  confetti = confetti.filter(c => c.y < canvas.height);
+  if (confetti.length > 0) requestAnimationFrame(drawConfetti);
+}
+
+// 🔤 Wave-Header animieren
+const letters = document.querySelectorAll('.wave-text span');
+function restartWave() {
+  letters.forEach(letter => {
+    letter.style.animation = 'none';
+    letter.offsetHeight;
+    letter.style.animation = '';
+  });
+}
+setInterval(restartWave, 3000);
+
+
+================================================css===============================================================================
+
+body {
+  font-family: cursive;
+  background: linear-gradient(90deg, #000000, #464545);
+  color: white;
+  text-align: center;
+  margin: 0;
+  padding: 30px;
+  overflow-x: hidden;
+}
+
+.wave-text span {
+  display: inline-block;
+  font-size: 55px;
+  font-weight: bold;
+  animation: wave 0.6s ease-in-out forwards;
+}
+
+.wave-text span:nth-child(1)  { animation-delay: 0s;   }
+.wave-text span:nth-child(2)  { animation-delay: 0.1s; }
+.wave-text span:nth-child(3)  { animation-delay: 0.2s; }
+.wave-text span:nth-child(4)  { animation-delay: 0.3s; }
+.wave-text span:nth-child(5)  { animation-delay: 0.4s; }
+
+.wave-text span:nth-child(6)  { animation-delay: 0.5s; }
+
+.wave-text span:nth-child(7)  { animation-delay: 0.6s; }
+.wave-text span:nth-child(8)  { animation-delay: 0.7s; }
+.wave-text span:nth-child(9)  { animation-delay: 0.8s; }
+.wave-text span:nth-child(10) { animation-delay: 0.9s; }
+.wave-text span:nth-child(11) { animation-delay: 1.0s; }
+
+@keyframes wave {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-15px); }
+}
+
+#buttonContainer {
+  margin-top: 30px;
+}
+
+input {
+  padding: 14px 20px;
+  border-radius: 25px;
+  border: 2px solid #10b981;
+  width: 280px;
+  margin-right: 10px;
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+  outline: none;
+  font-size: 18px;
+  transition: all 0.3s ease;
+}
+
+input:focus {
+  background-color: rgba(255, 255, 255, 0.2);
+  border-color: #34d399;
+  box-shadow: 0 0 10px #10b981;
+}
+
+button {
+  background-color: #10b981;
+  border: none;
+  border-radius: 12px;
+  padding: 12px 18px;
+  color: white;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  background-color: #059669;
+  transform: scale(1.05);
+}
+
+button:active {
+  transform: scale(0.95);
+}
+
+#removeDone {
+  background-color: #ef4444;   /* leichtes Rot */
+}
+
+#removeDone:hover {
+  background-color: #dc2626;   /* dunkleres Rot beim Hover */
+}
+
+ul {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 30px;
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+li {
+  background-color: rgba(255,255,255,0.1);
+  padding: 14px;
+  border-radius: 12px;
+  margin-bottom: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: all 0.3s ease;
+}
+
+li:hover {
+  background-color: rgba(255,255,255,0.2);
+}
+
+li.done {
+  text-decoration: line-through;
+  color: #9ca3af;
+}
+
+/* linke Box: Text + Counter */
+.leftContainer {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  flex: 1;
+  font-size: 18px;
+}
+
+/* rechte Box: Checkbox + Buttons */
+.rightContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.removeBtn {
+  background-color: transparent;
+  color: #ef4444;
+  border: none;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.removeBtn:hover {
+  transform: scale(1.2);
+  color: #dc2626;
+}
+
+.editBtn {
+  background-color: #cfa80c;
+  color: black;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.editBtn:hover {
+  background-color: #b78e03;
+  transform: scale(1.1);
+}
+
+canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 999;
+}
+
+
+input[type="checkbox"] {
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border: 2px solid #10b981;
+  border-radius: 6px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s ease;
+}
+
+input[type="checkbox"]:checked {
+  background-color: #10b981;
+  border-color: #10b981;
+}
+
+input[type="checkbox"]:checked::after {
+  content: "✓";
+  color: white;
+  font-weight: bold;
+  position: absolute;
+  top: -2px;
+  left: 2px;
+  font-size: 16px;
+}
